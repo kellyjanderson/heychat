@@ -14,8 +14,8 @@
     "author": "Your Name",
     "license": "ISC",
     "dependencies": {
-      "@picovoice/porcupine-node": "^1.1.0",
-      "mic": "^2.3.1"
+      "@picovoice/porcupine-node": "^2.2.1",
+      "mic": "^2.1.2"
     }
   }
   

@@ -1,5 +1,4 @@
 const Porcupine = require('@picovoice/porcupine-node');
-const { PvArgumentError, PvStatus } = require('@picovoice/porcupine-node/errors');
 const mic = require('mic');
 
 // Load the Porcupine model for "Hey Chat" (you would need to provide this)
@@ -17,7 +16,7 @@ let porcupine;
 try {
   porcupine = new Porcupine([HEY_CHAT_MODEL_PATH], [0.5]);
 } catch (error) {
-  if (error instanceof PvArgumentError) {
+  if (error) {
     console.error(`Argument error: ${error.message}`);
   } else {
     console.error(`Unknown error: ${error.message}`);
