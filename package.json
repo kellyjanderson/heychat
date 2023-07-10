@@ -1,0 +1,21 @@
+{
+    "name": "heyChat",
+    "version": "1.0.0",
+    "description": "A simple wake word detection app that listens for the phrase 'Hey Chat'",
+    "main": "index.js",
+    "scripts": {
+      "start": "node index.js"
+    },
+    "keywords": [
+      "wake word detection",
+      "porcupine",
+      "hey chat"
+    ],
+    "author": "Your Name",
+    "license": "ISC",
+    "dependencies": {
+      "@picovoice/porcupine-node": "^1.1.0",
+      "mic": "^2.3.1"
+    }
+  }
+  
