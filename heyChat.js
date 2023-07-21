@@ -6,6 +6,10 @@ const fs = require('fs');
 const mic = require('mic');
 const WaveFile = require('wavefile').WaveFile;
 const { Configuration, OpenAIApi } = require('openai');
+const Say = require('say').Say;
+const say = new Say('darwin');
+
+const conversation = [];
 
 const configuration = new Configuration({
     apiKey: "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"
@@ -18,6 +22,8 @@ const HEY_CHAT_MODEL_PATH = './Hey-Chat_en_mac_v2_2_0.ppn';
 const ACCESS_KEY = '2e9j7ggYfXSD7uH1opmTd8CB04acEfR6GTmS0jDq35OVfOkCAzKimw==';
 const keywordNames = ['heyChat'];
 const promptBuffer = new Int16Array(16000*10);
+const timeToListen = 5000;
+
 let prompting = false;
 let bufferOffset = 0;
 let [promptStartTime, promptStopTime] = new Array(2).fill(null);
@@ -31,6 +37,11 @@ const micInstance = mic({
     debug: false,
 });
 
+
+function randBtwixt(min, max) { // min and max included 
+    return Math.floor(Math.random() * (max - min + 1) + min);
+  }
+
 async function getPromptText(wavData) {
     try {
         const transcriptionResult = await openai.createTranscription(fs.createReadStream('./promptBuffer.wav'),'whisper-1');
@@ -38,6 +49,30 @@ async function getPromptText(wavData) {
     } catch (error) {
         console.error(error);
     }
+}
+
+async function getChatResponse(prompt) {
+    conversation.push({'role': 'user', 'content': prompt});
+    try {
+        const completion = await openai.createChatCompletion({
+            model: "gpt-3.5-turbo",
+            messages: conversation,
+        });
+
+        const choiceIndex = randBtwixt(0, completion.data.choices.length -1);
+        const message = completion.data.choices[choiceIndex].message;
+        conversation.push(message);            
+
+        if(conversation.length > 100) {
+            conversation.unshift();
+        }
+
+        return message.content;
+        
+    } catch (error) {
+        console.error(error);
+    }
+
 }
 
 // Create a Porcupine instance
@@ -69,14 +104,16 @@ micInputStream.on('data', async (data) => {
     } else {
         
         if (prompting) {
+            prompting = false;
             let wav = new WaveFile();
             wav.fromScratch(1, 16000, '16', promptBuffer);
             fs.writeFileSync('./promptBuffer.wav', wav.toBuffer());
-            console.log(await getPromptText(wav));
+            let chatResponse = await getChatResponse(await getPromptText(wav));
+            console.log(chatResponse);
+            say.speak(chatResponse, 'Zoe', 1.0);
         }
 
         bufferOffset = 0;
-        prompting = false;
         // Split the data into chunks of 512 samples
         let wav = new WaveFile();
         wav.fromScratch(1, 16000, '16', pcmData);
@@ -87,7 +124,7 @@ micInputStream.on('data', async (data) => {
 
             if (keywordIndex !== -1) {
                 prompting = true;
-                [promptStartTime, promptStopTime] = [Date.now(), Date.now() +10000];
+                [promptStartTime, promptStopTime] = [Date.now(), Date.now() + timeToListen];
 
                 const timestamp = frameIndexToSeconds(i, porcupine);
                 console.log(
