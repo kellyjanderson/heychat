@@ -1,25 +1,29 @@
+require('dotenv').config();
+
 const {
     Porcupine,
     getInt16Frames
 } = require("@picovoice/porcupine-node");
 const fs = require('fs');
+const { get } = require('http');
 const mic = require('mic');
 const WaveFile = require('wavefile').WaveFile;
 const { Configuration, OpenAIApi } = require('openai');
 const Say = require('say').Say;
 const say = new Say('darwin');
 
+
+
 const conversation = [];
 
 const configuration = new Configuration({
-    apiKey: "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"
-});
+    apiKey: process.env.OPEN_AI_KEY
+})
 
 const openai = new OpenAIApi(configuration);
 
 // Load the Porcupine model for "Hey Chat" (you would need to provide this)
 const HEY_CHAT_MODEL_PATH = './Hey-Chat_en_mac_v2_2_0.ppn';
-const ACCESS_KEY = '2e9j7ggYfXSD7uH1opmTd8CB04acEfR6GTmS0jDq35OVfOkCAzKimw==';
 const keywordNames = ['heyChat'];
 const promptBuffer = new Int16Array(16000*10);
 const timeToListen = 5000;
@@ -78,7 +82,7 @@ async function getChatResponse(prompt) {
 // Create a Porcupine instance
 let porcupine;
 try {
-    porcupine = new Porcupine(ACCESS_KEY, [HEY_CHAT_MODEL_PATH], [0.5]);
+    porcupine = new Porcupine(process.env.PORCUPINE_KEY, [HEY_CHAT_MODEL_PATH], [0.5]);
 } catch (error) {
     if (error) {
         console.error(`Argument error: ${error.message}`);
@@ -108,9 +112,13 @@ micInputStream.on('data', async (data) => {
             let wav = new WaveFile();
             wav.fromScratch(1, 16000, '16', promptBuffer);
             fs.writeFileSync('./promptBuffer.wav', wav.toBuffer());
-            let chatResponse = await getChatResponse(await getPromptText(wav));
-            console.log(chatResponse);
-            say.speak(chatResponse, 'Zoe', 1.0);
+            try {
+                let chatResponse = await getChatResponse(await getPromptText(wav));
+                console.log(chatResponse);
+                say.speak(chatResponse, 'Zoe', 1.0);
+            } catch (error) {
+                console.error(error);
+            }
         }
 
         bufferOffset = 0;
@@ -135,4 +143,18 @@ micInputStream.on('data', async (data) => {
     };    
 });
 
-micInstance.start();
+async function main() {
+    try {
+        console.log(await getChatResponse("give me a random factoid"));
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+if(process.env.NO_MIC) {
+    main();
+} else {
+    console.log('Listening for wake word...');
+    micInstance.start();
+}
+
